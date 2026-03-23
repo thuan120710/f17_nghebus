@@ -22,5 +22,15 @@ Config.BusJob = {
     },
     
     -- Cài đặt thời gian
-    WaitTimeAtStop = 5000, -- 5 giây chờ khách (miligiây)
+    WaitTimeAtStop = 15000, -- 15 giây chờ khách (để NPC lên/xuống xe)
+
+    -- Danh sách model NPC đón xe
+    BusPeds = {
+        "a_m_m_skater_01",
+        "a_m_m_salton_01",
+        "a_m_y_beach_01",
+        "a_m_y_business_02",
+        "a_f_m_bevhills_01",
+        "a_f_y_fitness_01",
+    }
 }
