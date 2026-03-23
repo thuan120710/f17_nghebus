@@ -37,7 +37,7 @@ RegisterNetEvent('f17_nghebus:sv:FinishJob', function()
     local bonus = Config.BusJob.Reward.CompletionBonus
     
     -- Trả thưởng bonus
-    Player.Functions.AddMoney('cash', bonus, "bus-job-bonus")
+    Player.Functions.AddMoney('tienkhoa', bonus, "bus-job-bonus")
     
     -- Reset trạng thái
     Player.Functions.SetMetaData("danglamviec", "none")
