@@ -4,6 +4,8 @@ local jobStarted = false
 local missionBlip = nil
 local busVehicle = nil
 local currentPed = nil
+local currentWaitingModel = nil -- Model NPC đang đứng chờ tại trạm
+local lastPedOnBusModel = nil   -- Model NPC đang ở trên xe (để xuống trạm sau)
 local isWaitingAtStop = false
 
 -- Hàm tạo Blip dẫn đường
@@ -37,6 +39,8 @@ local function SpawnStopPed(coords)
     SetPedCanPlayAmbientAnims(currentPed, true)
     TaskStartScenarioInPlace(currentPed, "WORLD_HUMAN_STAND_MOBILE", 0, true)
     SetModelAsNoLongerNeeded(model)
+    
+    return model -- Trả về model để lưu lại
 end
 
 -- Hàm cập nhật NUI HUD
@@ -74,6 +78,8 @@ local function CleanupJob()
     missionBlip = nil
     busVehicle = nil
     currentPed = nil
+    currentWaitingModel = nil
+    lastPedOnBusModel = nil
     isWaitingAtStop = false
 end
 
@@ -137,7 +143,8 @@ function StartBusJob()
         -- Blip tới điểm đầu tiên (Stops[1])
         local nextIndex = currentStop + 1
         AddMissionBlip(Config.BusJob.Stops[nextIndex].coords, "~y~[Nghề Bus]~w~ Điểm dừng số " .. nextIndex)
-        SpawnStopPed(Config.BusJob.Stops[nextIndex].coords)
+        currentWaitingModel = SpawnStopPed(Config.BusJob.Stops[nextIndex].coords)
+        lastPedOnBusModel = nil -- Chưa có ai trên xe lúc bắt đầu
         exports['f17notify']:Notify("Tuyến đường đã bắt đầu. Hãy di chuyển tới điểm dừng đầu tiên!", "primary", 5000)
     end, depot, true)
 end
@@ -187,14 +194,17 @@ CreateThread(function()
                             UpdateBusHUD(true, progressLabel, true)
                             
                             -- Xử lý khách xuống xe
-                            local modelExit = Config.BusJob.BusPeds[math.random(#Config.BusJob.BusPeds)]
-                            RequestModel(modelExit)
-                            while not HasModelLoaded(modelExit) do Wait(10) end
-                            local exitingPed = CreatePedInsideVehicle(busVehicle, 4, modelExit, math.random(1, 4), false, true)
-                            SetEntityAsMissionEntity(exitingPed, true, true)
-                            TaskLeaveVehicle(exitingPed, busVehicle, 0)
-                            TaskWanderStandard(exitingPed, 10.0, 10)
-                            SetModelAsNoLongerNeeded(modelExit)
+                            local exitingPed = nil
+                            if lastPedOnBusModel then
+                                local modelExit = lastPedOnBusModel
+                                RequestModel(modelExit)
+                                while not HasModelLoaded(modelExit) do Wait(10) end
+                                exitingPed = CreatePedInsideVehicle(busVehicle, 4, modelExit, math.random(1, 4), false, true)
+                                SetEntityAsMissionEntity(exitingPed, true, true)
+                                TaskLeaveVehicle(exitingPed, busVehicle, 0)
+                                TaskWanderStandard(exitingPed, 10.0, 10)
+                                SetModelAsNoLongerNeeded(modelExit)
+                            end
                             
                             -- Xử lý khách lên xe (NPC đứng chờ tại trạm)
                             if currentPed and busVehicle then
@@ -219,8 +229,14 @@ CreateThread(function()
                                     exports['f17notify']:Notify("Đã hoàn thành tuyến đường và trả xe!", "success", 5000)
                                 else
                                     -- Dọn dẹp khách
-                                    if currentPed then DeleteEntity(currentPed) currentPed = nil end
                                     if exitingPed then DeleteEntity(exitingPed) end
+                                    if currentPed then 
+                                        DeleteEntity(currentPed) 
+                                        currentPed = nil 
+                                    end
+
+                                    -- Lưu khách vừa lên xe thành khách đang ở trên xe
+                                    lastPedOnBusModel = currentWaitingModel
                                     
                                     -- Hoàn thành trạm hiện tại -> tăng currentStop
                                     currentStop = currentStop + 1
@@ -231,7 +247,7 @@ CreateThread(function()
                                     
                                     if followingIndex <= #Config.BusJob.Stops then
                                         AddMissionBlip(Config.BusJob.Stops[followingIndex].coords, "~y~[Nghề Bus]~w~ Điểm dừng số " .. followingIndex)
-                                        SpawnStopPed(Config.BusJob.Stops[followingIndex].coords)
+                                        currentWaitingModel = SpawnStopPed(Config.BusJob.Stops[followingIndex].coords)
                                     else
                                         AddMissionBlip(Config.BusJob.Depot, "~y~[Nghề Bus]~w~ Quay về Depot")
                                         statusText = "Quay về bãi"
