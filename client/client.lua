@@ -23,7 +23,7 @@ local function AddMissionBlip(coords, label)
 end
 
 -- Hàm cập nhật NUI HUD
-local function UpdateBusHUD(visible, statusText)
+local function UpdateBusHUD(visible, statusText, playSound)
     local nextName = "---"
     local nextIndex = currentStop + 1
     
@@ -42,7 +42,7 @@ local function UpdateBusHUD(visible, statusText)
         total = #Config.BusJob.Stops,
         nextStop = nextName,
         status = statusText or "Đang di chuyển",
-        playSound = statusText and statusText:find("đón khách") ~= nil
+        playSound = playSound or false
     })
 end
 
@@ -164,7 +164,7 @@ CreateThread(function()
                             local progressTime = Config.BusJob.WaitTimeAtStop
                             
                             -- Cập nhật HUD trạng thái đón khách
-                            UpdateBusHUD(true, progressLabel)
+                            UpdateBusHUD(true, progressLabel, true)
                             
                             QBCore.Functions.Progressbar("bus_stop", progressLabel, progressTime, false, false, {
                                 disableMovement = true,
